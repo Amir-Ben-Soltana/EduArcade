@@ -3,142 +3,761 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kids Learning Arcade Web</title>
+    <title>Kids Learning Arcade</title>
+    <!-- Bibliothèques web pour la lecture de fichiers PDF (fitz equivalent) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
         body {
-            background-color: #87CEEB;
+            background-color: #1a1a2e;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
         }
-        #game-container {
+        #game-card {
             position: relative;
             width: 1024px;
             height: 768px;
             max-width: 98vw;
             max-height: 98vh;
-            background: #87CEEB;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            background: #87CEEB;
+            transition: background 0.5s ease;
         }
-        h1 { color: #FF5722; font-size: 2.5rem; margin-bottom: 30px; text-shadow: 2px 2px white; }
-        .btn {
-            background: white;
+        
+        /* Canvas pour animations d'arrière-plan */
+        #bg-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .ui-layer {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1.title {
+            color: #FF5722;
+            font-size: 2.4rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 0px #FFF, -2px -2px 0px #FFF, 2px -2px 0px #FFF, -2px 2px 0px #FFF;
+        }
+
+        .btn-panel {
+            background: #FFFFFF;
             border: 4px solid #FF9600;
             border-radius: 20px;
-            padding: 15px 30px;
-            margin: 10px;
             width: 380px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #333;
+            height: 65px;
+            margin: 10px 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #323232;
             cursor: pointer;
-            transition: transform 0.1s, background-color 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
+            gap: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
         }
-        .btn:hover { background-color: #FFF0D2; transform: scale(1.03); }
-        .btn-lang {
+        .btn-panel:hover {
+            background: #FFF0D2;
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .btn-back {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 150px;
-            font-size: 1rem;
-            padding: 10px;
+            bottom: 25px;
+            width: 200px;
+            height: 50px;
+            border-radius: 15px;
+            font-size: 1.1rem;
         }
-        .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
-        .active { display: flex; }
+
+        .btn-globe {
+            position: absolute;
+            bottom: 25px;
+            right: 30px;
+            width: 150px;
+            height: 45px;
+            border-radius: 15px;
+            border-width: 3px;
+            font-size: 1rem;
+            background: #FFFFFF;
+            cursor: pointer;
+        }
+
+        /* Mode de Jeu */
+        .hud-score {
+            position: absolute;
+            top: 20px; left: 20px;
+            background: #FFF;
+            border: 3px solid #FF5722;
+            border-radius: 15px;
+            padding: 8px 20px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #FF5722;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .hud-bottom-left {
+            position: absolute;
+            bottom: 25px; left: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+        .btn-action {
+            width: 150px;
+            height: 45px;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-finish { background: #FFF; border: 3px solid #F44336; color: #F44336; }
+        .btn-finish:hover { background: #FFE6E6; }
+        .btn-skip { background: #FFF; border: 3px solid #FF9600; color: #323232; }
+        .btn-skip:hover { background: #FFF0D2; }
+
+        .question-box {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            width: 90%;
+            min-height: 140px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #323232;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .answers-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 500px;
+        }
+
+        .choice-btn {
+            background: #FFF;
+            border: 3px solid #FF9600;
+            border-radius: 20px;
+            height: 55px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #323232;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover { background: #FFF0D2; transform: scale(1.02); }
+
+        /* Écran de Lecture */
+        .reading-card {
+            background: rgba(255, 255, 255, 0.92);
+            width: 90%;
+            height: 500px;
+            border-radius: 20px;
+            padding: 40px;
+            font-size: 1.5rem;
+            line-height: 2.2rem;
+            color: #323232;
+            font-weight: 600;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        /* Jeu de Match / Association */
+        .match-container {
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            height: 380px;
+            position: relative;
+        }
+        .match-col { display: flex; flex-direction: column; gap: 20px; width: 350px; }
+        .match-card {
+            background: #FFF;
+            border: 4px solid #FF9600;
+            border-radius: 15px;
+            height: 80px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .match-card.selected { background: #FFF0D2; border-color: #FF5722; }
+        .match-card.matched { background: #C8E6C9; border-color: #4CAF50; cursor: default; }
+
+        /* Masquage des écrans */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .screen.active { display: flex; }
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <!-- ÉCRAN ACCUEIL -->
-    <div id="menu-main" class="screen active">
-        <h1 id="app-title">KIDS LEARNING ARCADE</h1>
-        <button class="btn" onclick="showScreen('menu-math')">🔢 <span id="txt-math">MATHÉMATIQUES</span></button>
-        <button class="btn" onclick="showScreen('menu-story')">📖 <span id="txt-story">HISTOIRES</span></button>
-        <button class="btn" onclick="showScreen('menu-theme')">☁️ <span id="txt-theme">THÈMES DU DÉCOR</span></button>
-    </div>
+<div id="game-card">
+    <canvas id="bg-canvas" width="1024" height="768"></canvas>
 
-    <!-- ÉCRAN SÉLECTION ÂGE MATHS -->
-    <div id="menu-math" class="screen">
-        <h1 id="txt-choose-age">CHOISIS TON ÂGE</h1>
-        <button class="btn" onclick="startMath('6-8')">🔢 6 - 8 ans</button>
-        <button class="btn" onclick="startMath('8-10')">🔢 8 - 10 ans</button>
-        <button class="btn" onclick="startMath('10-12')">🔢 10 - 12 ans</button>
-        <button class="btn" style="width: 200px; margin-top:20px;" onclick="showScreen('menu-main')">‹ RETOUR</button>
-    </div>
+    <div class="ui-layer">
+        <!-- ÉCRAN ACCUEIL PRINCIPAL -->
+        <div id="screen-main" class="screen active">
+            <h1 class="title" id="txt-app-title">KIDS LEARNING ARCADE</h1>
+            <button class="btn-panel" onclick="navigateTo('screen-math-menu')">➕ <span id="txt-btn-math">MATHÉMATIQUES</span></button>
+            <button class="btn-panel" onclick="navigateTo('screen-story-menu')">📖 <span id="txt-btn-story">HISTOIRES</span></button>
+            <button class="btn-panel" onclick="navigateTo('screen-theme')">☁️ <span id="txt-btn-theme">THÈMES DU DÉCOR</span></button>
+        </div>
 
-    <!-- ÉCRAN CHOIX THÈME -->
-    <div id="menu-theme" class="screen">
-        <h1 id="txt-choose-theme">CHOISIS UN THÈME</h1>
-        <button class="btn" onclick="setTheme('CIEL', '#87CEEB')">☁️ CIEL</button>
-        <button class="btn" onclick="setTheme('MER', '#AFEEEE')">🌊 MER</button>
-        <button class="btn" onclick="setTheme('FORET', '#98FB98')">🌲 FORÊT</button>
-        <button class="btn" onclick="setTheme('ESPACE', '#0F0F23')">🚀 NUIT</button>
-        <button class="btn" style="width: 200px; margin-top:20px;" onclick="showScreen('menu-main')">‹ RETOUR</button>
-    </div>
+        <!-- MENU MATHÉMATIQUES -->
+        <div id="screen-math-menu" class="screen">
+            <h1 class="title" id="txt-title-math">MATHÉMATIQUES</h1>
+            <button class="btn-panel" onclick="navigateTo('screen-age-select')">➕ <span id="txt-btn-age">EXERCICES PAR ÂGE</span></button>
+            <button class="btn-panel" onclick="triggerFileInput()">📂 <span id="txt-btn-import-m">IMPORTER UN FICHIER</span></button>
+            <button class="btn-panel btn-back" onclick="navigateTo('screen-main')"><span id="txt-btn-back-1">&lt; RETOUR</span></button>
+        </div>
 
-    <!-- BOUTON DU GLOBE DE LANGUE -->
-    <button class="btn btn-lang" onclick="toggleLanguage()">🌐 <span id="lang-code">FR</span></button>
+        <!-- CHOIX DE L'ÂGE -->
+        <div id="screen-age-select" class="screen">
+            <h1 class="title" id="txt-title-age">CHOISIS TON ÂGE</h1>
+            <button class="btn-panel" onclick="startAgeMath('6-8')">➕ <span id="txt-age-1">6 - 8 ans</span></button>
+            <button class="btn-panel" onclick="startAgeMath('8-10')">➕ <span id="txt-age-2">8 - 10 ans</span></button>
+            <button class="btn-panel" onclick="startAgeMath('10-12')">➕ <span id="txt-age-3">10 - 12 ans</span></button>
+            <button class="btn-panel btn-back" onclick="navigateTo('screen-math-menu')"><span id="txt-btn-back-2">&lt; RETOUR</span></button>
+        </div>
+
+        <!-- MENU HISTOIRES -->
+        <div id="screen-story-menu" class="screen">
+            <h1 class="title" id="txt-title-story">HISTOIRES</h1>
+            <button class="btn-panel" onclick="navigateTo('screen-preset-select')">📖 <span id="txt-btn-preset">HISTOIRES INTÉGRÉES</span></button>
+            <button class="btn-panel" onclick="triggerFileInput()">📂 <span id="txt-btn-import-s">IMPORTER UN FICHIER</span></button>
+            <button class="btn-panel btn-back" onclick="navigateTo('screen-main')"><span id="txt-btn-back-3">&lt; RETOUR</span></button>
+        </div>
+
+        <!-- CHOIX HISTOIRE INTÉGRÉE -->
+        <div id="screen-preset-select" class="screen">
+            <h1 class="title" id="txt-title-preset">CHOISIS UNE HISTOIRE</h1>
+            <button class="btn-panel" onclick="startPresetStory(0)">📖 Le Petit Lapin (FR)</button>
+            <button class="btn-panel" onclick="startPresetStory(1)">📖 The Friendly Bear (EN)</button>
+            <button class="btn-panel" onclick="startPresetStory(2)">📖 الولد والعصفور (AR)</button>
+            <button class="btn-panel btn-back" onclick="navigateTo('screen-story-menu')"><span id="txt-btn-back-4">&lt; RETOUR</span></button>
+        </div>
+
+        <!-- CHOIX THÈME -->
+        <div id="screen-theme" class="screen">
+            <h1 class="title" id="txt-title-theme">CHOISIS UN THÈME</h1>
+            <button class="btn-panel" onclick="setTheme('CIEL')">☁️ <span id="txt-th-ciel">CIEL</span></button>
+            <button class="btn-panel" onclick="setTheme('MER')">🌊 <span id="txt-th-mer">MER</span></button>
+            <button class="btn-panel" onclick="setTheme('FORET')">🌲 <span id="txt-th-foret">FORÊT</span></button>
+            <button class="btn-panel" onclick="setTheme('FLEUR')">🌸 <span id="txt-th-fleur">FLEURS</span></button>
+            <button class="btn-panel" onclick="setTheme('ESPACE')">🌙 <span id="txt-th-espace">NUIT</span></button>
+            <button class="btn-panel btn-back" onclick="navigateTo('screen-main')"><span id="txt-btn-back-5">&lt; RETOUR</span></button>
+        </div>
+
+        <!-- MODE LECTURE (HISTOIRE) -->
+        <div id="screen-reading" class="screen">
+            <h1 class="title" id="txt-read-title">Lis l'histoire !</h1>
+            <div class="reading-card" id="reading-text-card"></div>
+            <button class="btn-panel" style="width:250px; height:50px;" onclick="finishReading()"><span id="txt-continue">CONTINUER &gt;</span></button>
+        </div>
+
+        <!-- MODE JEU ARCADE (PLAYING) -->
+        <div id="screen-playing" class="screen">
+            <div class="hud-score">⭐ <span id="score-val">SCORE : 0</span></div>
+            
+            <h1 class="title" id="game-q-title">Résous le problème !</h1>
+            <div class="question-box" id="question-text">...</div>
+            <div class="answers-grid" id="answers-box"></div>
+
+            <div class="match-container" id="match-box" style="display:none;">
+                <div class="match-col" id="match-left"></div>
+                <div class="match-col" id="match-right"></div>
+            </div>
+
+            <div class="hud-bottom-left">
+                <button class="btn-action btn-finish" onclick="finishGame()"><span id="txt-btn-finish">Terminer</span></button>
+                <button class="btn-action btn-skip" onclick="skipQuestion()"><span id="txt-btn-skip">Suivant &gt;</span></button>
+            </div>
+        </div>
+
+        <!-- FIN DU TEST / BILAN -->
+        <div id="screen-finished" class="screen">
+            <h1 class="title" id="txt-final-msg">VICTOIRE ! BRAVO !</h1>
+            <h2 style="font-size:2rem; color:#323232; margin-bottom:30px;" id="txt-final-score">Score final : 0</h2>
+            <button class="btn-panel" onclick="restartGame()">🔄 <span id="txt-btn-retry">Recommencer</span></button>
+            <button class="btn-panel" onclick="navigateTo('screen-main')">📁 <span id="txt-btn-menu">Menu Principal</span></button>
+        </div>
+
+        <!-- BOUTON CUTE GLOBE EN BAS À DROITE -->
+        <button class="btn-panel btn-globe" id="globe-btn" onclick="toggleLanguage()">🌐 <span id="txt-lang-code">FR</span></button>
+    </div>
 </div>
 
+<input type="file" id="file-selector" accept=".pdf,.txt">
+
 <script>
-    const translations = {
-        fr: { title: "KIDS LEARNING ARCADE", math: "MATHÉMATIQUES", story: "HISTOIRES", theme: "THÈMES DU DÉCOR", age: "CHOISIS TON ÂGE", chooseTheme: "CHOISIS UN THÈME" },
-        en: { title: "KIDS LEARNING ARCADE", math: "MATHEMATICS", story: "STORIES", theme: "THEMES", age: "CHOOSE YOUR AGE", chooseTheme: "CHOOSE A THEME" },
-        ar: { title: "مغامرة التعلم للأطفال", math: "الرياضيات", story: "القصص", theme: "المظاهر", age: "اختر عمرك", chooseTheme: "اختر مظهراً" }
-    };
-
-    let currentLang = 'fr';
-
-    function showScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
+// ==========================================
+// 1. DICTIONNAIRES MULTILINGUES (IDENTIQUES AU PYTHON)
+// ==========================================
+const UI_TEXT = {
+    fr: {
+        app_title: "KIDS LEARNING ARCADE", math_btn: "MATHÉMATIQUES", story_btn: "HISTOIRES", theme_btn: "THÈMES DU DÉCOR",
+        math_preset: "EXERCICES PAR ÂGE", import_btn: "IMPORTER UN FICHIER", story_preset: "HISTOIRES INTÉGRÉES",
+        choose_age: "CHOISIS TON ÂGE", choose_story: "CHOISIS UNE HISTOIRE", choose_theme: "CHOISIS UN THÈME",
+        title_read: "Lis l'histoire !", continue: "CONTINUER >", score: "SCORE : ", fill: "Trouve le mot caché !",
+        tf: "Vrai ou Faux ?", match: "Relie les bonnes parties !", true: "VRAI", false: "FAUX", excellent: "EXCELLENT !",
+        nope: "NON ! Réponse : ", perfect: "PARFAIT !", wrong_match: "MAUVAISE LIAISON !", win_end: "VICTOIRE ! BRAVO !",
+        lose_end: "DOMMAGE ! RÉESSAIE !", final_score: "Score final : ", math_title: "Résous le problème !",
+        btn_skip: "Suivant >", btn_finish: "Terminer", back: "< RETOUR", age_1: "6 - 8 ans", age_2: "8 - 10 ans", age_3: "10 - 12 ans",
+        theme_ciel: "CIEL", theme_mer: "MER", theme_foret: "FORÊT", theme_fleur: "FLEURS", theme_espace: "NUIT",
+        btn_retry: "Recommencer", btn_menu: "Menu Principal"
+    },
+    en: {
+        app_title: "KIDS LEARNING ARCADE", math_btn: "MATHEMATICS", story_btn: "STORIES", theme_btn: "THEMES",
+        math_preset: "EXERCISES BY AGE", import_btn: "IMPORT A FILE", story_preset: "PRESET STORIES",
+        choose_age: "CHOOSE YOUR AGE", choose_story: "CHOOSE A STORY", choose_theme: "CHOOSE A THEME",
+        title_read: "Read the Story!", continue: "CONTINUE >", score: "SCORE: ", fill: "Fill in the blanks!",
+        tf: "True or False?", match: "Connect matching parts!", true: "TRUE", false: "FALSE", excellent: "EXCELLENT!",
+        nope: "NOPE! Answer: ", perfect: "PERFECT MATCH!", wrong_match: "WRONG MATCH!", win_end: "YOU WIN! GREAT JOB!",
+        lose_end: "TRY AGAIN!", final_score: "Final Score: ", math_title: "Solve the problem!",
+        btn_skip: "Skip >", btn_finish: "Finish", back: "< BACK", age_1: "6 - 8 years", age_2: "8 - 10 years", age_3: "10 - 12 years",
+        theme_ciel: "SKY", theme_mer: "SEA", theme_foret: "FOREST", theme_fleur: "FLOWERS", theme_espace: "NIGHT",
+        btn_retry: "Retry Game", btn_menu: "Main Menu"
+    },
+    ar: {
+        app_title: "مغامرة التعلم للأطفال", math_btn: "الرياضيات", story_btn: "القصص", theme_btn: "المظاهر",
+        math_preset: "تمارين حسب العمر", import_btn: "استيراد ملف", story_preset: "قصص مدمجة",
+        choose_age: "اختر عمرك", choose_story: "اختر قصة", choose_theme: "اختر مظهراً",
+        title_read: "اقرأ القصة!", continue: "< متابعة", score: "النتيجة: ", fill: "املأ الفراغات!",
+        tf: "صح أم خطأ؟", match: "اربط الأجزاء!", true: "صح", false: "خطأ", excellent: "ممتاز!",
+        nope: "خطأ! الإجابة: ", perfect: "تطابق مثالي!", wrong_match: "تطابق خاطئ!", win_end: "لقد نجحت!",
+        lose_end: "حاول مرة أخرى!", final_score: "النتيجة النهائية: ", math_title: "حل المسألة الرياضية!",
+        btn_skip: "التالي >", btn_finish: "إنهاء", back: "عودة >", age_1: "6 - 8 سنوات", age_2: "8 - 10 سنوات", age_3: "10 - 12 سنة",
+        theme_ciel: "السماء", theme_mer: "البحر", theme_foret: "الغيضة", theme_fleur: "الزهور", theme_espace: "الليل",
+        btn_retry: "إعادة اللعب", btn_menu: "القائمة الرئيسية"
     }
+};
 
-    function setTheme(name, color) {
-        document.getElementById('game-container').style.backgroundColor = color;
-        if(name === 'ESPACE') {
-            document.querySelectorAll('h1').forEach(h => h.style.color = '#FFD700');
+const PRESET_STORIES = [
+    { name: "Le Petit Lapin (FR)", lang: "fr", text: "Un petit lapin blanc habite dans la forêt. Il aime manger des carottes fraîches. Un jour, il rencontre un papillon bleu. Le papillon vole près de la rivière. Le lapin suit son nouvel ami toute la journée." },
+    { name: "The Friendly Bear (EN)", lang: "en", text: "A friendly bear lives in a big green forest. He loves to eat sweet honey and fresh apples. Every morning, he walks near the river and plays with the birds. All the animals in the forest love the bear." },
+    { name: "الولد والعصفور (AR)", lang: "ar", text: "طارق ولد صغير. طارق يحب اللعب في الحديقة. في يوم من الأيام، رأى طارق عصفورا جميلا. العصفور يغني فوق الشجرة الكبيرة. أعطى طارق العصفور بعض الخبز. طارق والعصفور أصدقاء الآن." }
+];
+
+let CURRENT_LANG = 'fr';
+let CURRENT_THEME = 'CIEL';
+let questions = [];
+let currentQIndex = 0;
+let score = 0;
+let matchSelectedLeft = null;
+let matchPairsFound = [];
+
+// ==========================================
+// 2. MOTEUR MATHÉMATIQUES (IDENTIQUE AU PYTHON)
+// ==========================================
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function makeDistractorsNum(ans) {
+    let choices = new Set([ans.toString()]);
+    while (choices.size < 4) {
+        let fake = ans + [ -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 10, -10 ][randInt(0, 11)];
+        if (fake >= 0) choices.add(fake.toString());
+    }
+    return Array.from(choices).sort(() => Math.random() - 0.5);
+}
+
+function makeDistractorsDouble(v1, v2) {
+    let correct = `${v1} , ${v2}`;
+    let choices = new Set([correct]);
+    while (choices.size < 4) {
+        let f1 = Math.max(0, v1 + [-5, -2, 2, 5, 10, -10][randInt(0, 5)]);
+        let f2 = Math.max(0, v2 + [-5, -2, 2, 5, 10, -10][randInt(0, 5)]);
+        choices.add(`${f1} , ${f2}`);
+    }
+    return Array.from(choices).sort(() => Math.random() - 0.5);
+}
+
+function generateMathQuestionsByAge(age) {
+    let list = [];
+    for (let i = 0; i < 8; i++) {
+        if (age === "6-8") {
+            let op = Math.random() > 0.5 ? '+' : '-';
+            let a, b, ans;
+            if (op === '+') { a = randInt(1, 15); b = randInt(1, 15); ans = a + b; }
+            else { a = randInt(5, 20); b = randInt(1, a); ans = a - b; }
+            list.push({ type: "fill_blank", question: `${a} ${op} ${b} = ?`, answer: ans.toString(), choices: makeDistractorsNum(ans) });
+        } else if (age === "8-10") {
+            if (Math.random() > 0.5) {
+                let op = ['+', '-', '*'][randInt(0, 2)];
+                let a, b, ans;
+                if (op === '*') { a = randInt(2, 9); b = randInt(2, 9); ans = a * b; }
+                else if (op === '+') { a = randInt(10, 50); b = randInt(10, 50); ans = a + b; }
+                else { a = randInt(20, 80); b = randInt(5, a); ans = a - b; }
+                list.push({ type: "fill_blank", question: `${a} ${op === '*' ? 'x' : op} ${b} = ?`, answer: ans.toString(), choices: makeDistractorsNum(ans) });
+            } else {
+                // SUITE A 2 VARIABLES
+                let start = randInt(5, 20), step = [2, 5, 10][randInt(0, 2)];
+                let v1 = start + 3 * step, v2 = start + 4 * step;
+                list.push({ type: "fill_blank", question: `Suite : ${start} - ${start+step} - ${start+2*step} - ? - ? - ${start+5*step}`, answer: `${v1} , ${v2}`, choices: makeDistractorsDouble(v1, v2) });
+            }
         } else {
-            document.querySelectorAll('h1').forEach(h => h.style.color = '#FF5722');
+            if (Math.random() > 0.5) {
+                let ans = randInt(2, 12), b = randInt(5, 30), a = ans * b;
+                list.push({ type: "fill_blank", question: `? x ${b} = ${a}`, answer: ans.toString(), choices: makeDistractorsNum(ans) });
+            } else {
+                let a = randInt(2, 5), b = randInt(2, 5), c = randInt(5, 20);
+                let ans = (a * b) + c;
+                list.push({ type: "fill_blank", question: `(${a} x ${b}) + ${c} = ?`, answer: ans.toString(), choices: makeDistractorsNum(ans) });
+            }
         }
-        showScreen('menu-main');
     }
+    return list;
+}
 
-    function toggleLanguage() {
-        if(currentLang === 'fr') currentLang = 'en';
-        else if(currentLang === 'en') currentLang = 'ar';
-        else currentLang = 'fr';
+function parseCustomMathText(text) {
+    let list = [];
+    let lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-        document.getElementById('lang-code').innerText = currentLang.toUpperCase();
-        document.getElementById('app-title').innerText = translations[currentLang].title;
-        document.getElementById('txt-math').innerText = translations[currentLang].math;
-        document.getElementById('txt-story').innerText = translations[currentLang].story;
-        document.getElementById('txt-theme').innerText = translations[currentLang].theme;
-        document.getElementById('txt-choose-age').innerText = translations[currentLang].age;
-        document.getElementById('txt-choose-theme').innerText = translations[currentLang].chooseTheme;
-        
-        document.body.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+    lines.forEach(line => {
+        // Operateurs
+        let calc = [...line.matchAll(/(\d+)\s*([\+\-\*\/xX])\s*(\d+)\s*=\s*(?:_{2,}|\?)?/g)];
+        calc.forEach(m => {
+            let a = parseInt(m[1]), op = m[2], b = parseInt(m[3]), ans;
+            if (op === '+') ans = a + b;
+            else if (op === '-') ans = a - b;
+            else if (['*', 'x', 'X'].includes(op)) ans = a * b;
+            else if (op === '/' && b !== 0) ans = Math.floor(a / b);
+            if (ans !== undefined) list.push({ type: "fill_blank", question: `${a} ${op === '*' ? 'x' : op} ${b} = ?`, answer: ans.toString(), choices: makeDistractorsNum(ans) });
+        });
+
+        // Comparaison
+        let comp = [...line.matchAll(/(\d+)\s*_{2,}\s*(\d+)/g)];
+        comp.forEach(m => {
+            let n1 = parseInt(m[1]), n2 = parseInt(m[2]);
+            let ans = n1 === n2 ? "=" : (n1 < n2 ? "<" : ">");
+            list.push({ type: "fill_blank", question: `Compare : ${n1}  [ ? ]  ${n2}`, answer: ans, choices: ["<", ">", "="].sort(() => Math.random() - 0.5) });
+        });
+
+        // Suites multi-variables
+        if ((line.includes('-') || line.includes('_')) && /\d/.test(line) && !line.includes("Exercice")) {
+            let parts = line.replace(/____/g, '?').split(/[\s\-]+/);
+            let elems = parts.filter(p => /^\d+$/.test(p) || p === '?');
+            let gapCount = elems.filter(p => p === '?').length;
+
+            if (elems.length >= 4 && gapCount >= 1) {
+                let nums = [];
+                elems.forEach((val, idx) => { if (/^\d+$/.test(val)) nums.push({ idx, val: parseInt(val) }); });
+                if (nums.length >= 2) {
+                    let step = Math.floor((nums[1].val - nums[0].val) / (nums[1].idx - nums[0].idx));
+                    let gapIndices = [];
+                    elems.forEach((val, idx) => { if (val === '?') gapIndices.push(idx); });
+
+                    if (gapIndices.length === 1) {
+                        let ans = nums[0].val + (gapIndices[0] - nums[0].idx) * step;
+                        list.push({ type: "fill_blank", question: "Suite : " + elems.join(" - "), answer: ans.toString(), choices: makeDistractorsNum(ans) });
+                    } else if (gapIndices.length >= 2) {
+                        let ans1 = nums[0].val + (gapIndices[0] - nums[0].idx) * step;
+                        let ans2 = nums[0].val + (gapIndices[1] - nums[0].idx) * step;
+                        list.push({ type: "fill_blank", question: "Suite : " + elems.slice(0, 6).join(" - "), answer: `${ans1} , ${ans2}`, choices: makeDistractorsDouble(ans1, ans2) });
+                    }
+                }
+            }
+        }
+    });
+    return list;
+}
+
+// ==========================================
+// 3. GENERATEUR HISTOIRES INTELLIGENT
+# ==========================================
+function generateSmartQuestionsFromText(text) {
+    let parsedMath = parseCustomMathText(text);
+    if (parsedMath.length > 0) return parsedMath;
+
+    let list = [];
+    let sentences = text.replace(/[!?؟]/g, '.').split('.').map(s => s.trim()).filter(s => s.length > 8);
+    let allWords = text.split(/\s+/).filter(w => w.length > 3);
+
+    sentences.forEach(sentence => {
+        let words = sentence.split(' ');
+        if (words.length >= 4) {
+            let targetWord = words[randInt(0, words.length - 1)];
+            let qText = sentence.replace(targetWord, "_____");
+            let choices = [targetWord];
+            while (choices.length < 3 && allWords.length > 3) {
+                let w = allWords[randInt(0, allWords.length - 1)];
+                if (!choices.includes(w)) choices.push(w);
+            }
+            list.push({ type: "fill_blank", question: qText, answer: targetWord, choices: choices.sort(() => Math.random() - 0.5) });
+        }
+    });
+    return list;
+}
+
+// ==========================================
+// 4. ANIMATIONS D'ARRIÈRE-PLAN (CANVAS)
+// ==========================================
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let clouds = [
+    {x: 0.05, y: 60, speed: 0.0004}, {x: 0.35, y: 140, speed: 0.0006},
+    {x: 0.70, y: 80, speed: 0.0005}, {x: 0.20, y: 300, speed: 0.0003},
+    {x: 0.55, y: 450, speed: 0.0007}, {x: 0.85, y: 350, speed: 0.0005}
+];
+let stars = Array.from({length: 80}, () => ({x: Math.random() * 1024, y: Math.random() * 768}));
+
+function drawCloud(x, y) {
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(x, y, 30, 0, Math.PI * 2);
+    ctx.arc(x + 35, y - 20, 40, 0, Math.PI * 2);
+    ctx.arc(x + 70, y, 30, 0, Math.PI * 2);
+    ctx.fillRect(x, y - 10, 70, 40);
+    ctx.fill();
+}
+
+function renderCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let time = Date.now() * 0.003;
+
+    if (CURRENT_THEME === 'CIEL' || CURRENT_THEME === 'FLEUR') {
+        // Nuages
+        clouds.forEach(c => {
+            c.x += c.speed;
+            if (c.x > 1.1) c.x = -0.15;
+            drawCloud(c.x * canvas.width, c.y);
+        });
+        if (CURRENT_THEME === 'FLEUR') {
+            // Fleurs Pastel
+            for (let x = 80; x < canvas.width; x += 180) {
+                let y = canvas.height - 55 + Math.sin(time + x) * 5;
+                ctx.fillStyle = "#FF69B4";
+                ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#FFD700";
+                ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill();
+            }
+        }
+    } else if (CURRENT_THEME === 'FORET') {
+        // Arbres
+        for (let x = 60; x < canvas.width + 60; x += 130) {
+            ctx.fillStyle = "#654321"; ctx.fillRect(x - 12, canvas.height - 90, 24, 50);
+            ctx.fillStyle = "#228B22"; ctx.beginPath(); ctx.arc(x, canvas.height - 100, 38, 0, Math.PI*2); ctx.fill();
+        }
+    } else if (CURRENT_THEME === 'ESPACE') {
+        // Étoiles
+        ctx.fillStyle = "#FFFFFF";
+        stars.forEach(s => {
+            let r = Math.max(1, Math.sin(time + s.x) * 2 + 3);
+            ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI*2); ctx.fill();
+        });
     }
+    requestAnimationFrame(renderCanvas);
+}
+renderCanvas();
 
-    function startMath(age) {
-        alert("Lancement du jeu Arcade pour la tranche : " + age);
+// ==========================================
+// 5. NAVIGATION ET LOGIQUE DE JEU
+// ==========================================
+function updateUI() {
+    let ui = UI_TEXT[CURRENT_LANG];
+    document.getElementById('txt-app-title').innerText = ui.app_title;
+    document.getElementById('txt-btn-math').innerText = ui.math_btn;
+    document.getElementById('txt-btn-story').innerText = ui.story_btn;
+    document.getElementById('txt-btn-theme').innerText = ui.theme_btn;
+    document.getElementById('txt-title-math').innerText = ui.math_btn;
+    document.getElementById('txt-btn-age').innerText = ui.math_preset;
+    document.getElementById('txt-btn-import-m').innerText = ui.import_btn;
+    document.getElementById('txt-btn-import-s').innerText = ui.import_btn;
+    document.getElementById('txt-title-age').innerText = ui.choose_age;
+    document.getElementById('txt-age-1').innerText = ui.age_1;
+    document.getElementById('txt-age-2').innerText = ui.age_2;
+    document.getElementById('txt-age-3').innerText = ui.age_3;
+    document.getElementById('txt-title-story').innerText = ui.story_btn;
+    document.getElementById('txt-btn-preset').innerText = ui.story_preset;
+    document.getElementById('txt-title-preset').innerText = ui.choose_story;
+    document.getElementById('txt-title-theme').innerText = ui.choose_theme;
+    document.getElementById('txt-th-ciel').innerText = ui.theme_ciel;
+    document.getElementById('txt-th-mer').innerText = ui.theme_mer;
+    document.getElementById('txt-th-foret').innerText = ui.theme_foret;
+    document.getElementById('txt-th-fleur').innerText = ui.theme_fleur;
+    document.getElementById('txt-th-espace').innerText = ui.theme_espace;
+    document.getElementById('txt-read-title').innerText = ui.title_read;
+    document.getElementById('txt-continue').innerText = ui.continue;
+    document.getElementById('txt-btn-finish').innerText = ui.btn_finish;
+    document.getElementById('txt-btn-skip').innerText = ui.btn_skip;
+    document.getElementById('txt-btn-retry').innerText = ui.btn_retry;
+    document.getElementById('txt-btn-menu').innerText = ui.btn_menu;
+    document.getElementById('txt-lang-code').innerText = CURRENT_LANG.toUpperCase();
+
+    document.querySelectorAll('[id^="txt-btn-back"]').forEach(el => el.innerText = ui.back);
+    document.body.dir = CURRENT_LANG === 'ar' ? 'rtl' : 'ltr';
+}
+
+function toggleLanguage() {
+    if (CURRENT_LANG === 'fr') CURRENT_LANG = 'en';
+    else if (CURRENT_LANG === 'en') CURRENT_LANG = 'ar';
+    else CURRENT_LANG = 'fr';
+    updateUI();
+}
+
+function navigateTo(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+    document.getElementById('globe-btn').style.display = (screenId === 'screen-playing') ? 'none' : 'flex';
+}
+
+function setTheme(theme) {
+    CURRENT_THEME = theme;
+    let card = document.getElementById('game-card');
+    if (theme === 'CIEL') card.style.background = '#87CEEB';
+    else if (theme === 'MER') card.style.background = '#AFEEEE';
+    else if (theme === 'FORET') card.style.background = '#98FB98';
+    else if (theme === 'FLEUR') card.style.background = '#AFEEEE';
+    else if (theme === 'ESPACE') card.style.background = '#0F0F23';
+    navigateTo('screen-main');
+}
+
+function startAgeMath(age) {
+    questions = generateMathQuestionsByAge(age);
+    currentQIndex = 0; score = 0;
+    showQuestion();
+    navigateTo('screen-playing');
+}
+
+function startPresetStory(idx) {
+    let s = PRESET_STORIES[idx];
+    CURRENT_LANG = s.lang;
+    updateUI();
+    document.getElementById('reading-text-card').innerText = s.text;
+    questions = generateSmartQuestionsFromText(s.text);
+    navigateTo('screen-reading');
+}
+
+function finishReading() {
+    currentQIndex = 0; score = 0;
+    showQuestion();
+    navigateTo('screen-playing');
+}
+
+function showQuestion() {
+    if (currentQIndex >= questions.length) { finishGame(); return; }
+
+    let q = questions[currentQIndex];
+    let ui = UI_TEXT[CURRENT_LANG];
+    document.getElementById('score-val').innerText = `${ui.score}${score}`;
+    document.getElementById('game-q-title').innerText = q.question.includes('=') || q.question.includes('?') ? ui.math_title : ui.fill;
+    document.getElementById('question-text').innerText = q.question;
+
+    let box = document.getElementById('answers-box');
+    box.innerHTML = '';
+    
+    q.choices.forEach(c => {
+        let btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.innerText = c;
+        btn.onclick = () => handleAnswer(c === q.answer);
+        box.appendChild(btn);
+    });
+}
+
+function handleAnswer(isCorrect) {
+    let ui = UI_TEXT[CURRENT_LANG];
+    if (isCorrect) { score += 100; alert(ui.excellent); }
+    else { alert(ui.nope + questions[currentQIndex].answer); }
+    currentQIndex++;
+    showQuestion();
+}
+
+function skipQuestion() { currentQIndex++; showQuestion(); }
+
+function finishGame() {
+    let ui = UI_TEXT[CURRENT_LANG];
+    document.getElementById('txt-final-msg').innerText = score >= (questions.length * 40) ? ui.win_end : ui.lose_end;
+    document.getElementById('txt-final-score').innerText = `${ui.final_score}${score}`;
+    navigateTo('screen-finished');
+}
+
+function restartGame() {
+    currentQIndex = 0; score = 0;
+    questions.sort(() => Math.random() - 0.5);
+    showQuestion();
+    navigateTo('screen-playing');
+}
+
+// ==========================================
+// 6. DEPOSIT DE FICHIERS (PDF & TXT)
+// ==========================================
+function triggerFileInput() { document.getElementById('file-selector').click(); }
+
+document.getElementById('file-selector').addEventListener('change', function(e) {
+    let file = e.target.files[0];
+    if (!file) return;
+
+    let reader = new FileReader();
+    if (file.name.endsWith('.pdf')) {
+        reader.onload = function() {
+            let typedarray = new Uint8Array(this.result);
+            pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                let maxPages = pdf.numPages, countPromises = [];
+                for (let j = 1; j <= maxPages; j++) {
+                    countPromises.push(pdf.getPage(j).then(page => page.getTextContent().then(t => t.items.map(s => s.str).join(' '))));
+                }
+                Promise.all(countPromises).then(texts => {
+                    let fullText = texts.join('\n');
+                    questions = generateSmartQuestionsFromText(fullText);
+                    currentQIndex = 0; score = 0;
+                    showQuestion();
+                    navigateTo('screen-playing');
+                });
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.onload = function(e) {
+            let fullText = e.target.result;
+            questions = generateSmartQuestionsFromText(fullText);
+            currentQIndex = 0; score = 0;
+            showQuestion();
+            navigateTo('screen-playing');
+        };
+        reader.readAsText(file);
     }
+});
+
+updateUI();
 </script>
-
 </body>
 </html>
