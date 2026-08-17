@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kids Learning Arcade Web</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body {
+            background-color: #87CEEB;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 1024px;
+            height: 768px;
+            max-width: 98vw;
+            max-height: 98vh;
+            background: #87CEEB;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        h1 { color: #FF5722; font-size: 2.5rem; margin-bottom: 30px; text-shadow: 2px 2px white; }
+        .btn {
+            background: white;
+            border: 4px solid #FF9600;
+            border-radius: 20px;
+            padding: 15px 30px;
+            margin: 10px;
+            width: 380px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        .btn:hover { background-color: #FFF0D2; transform: scale(1.03); }
+        .btn-lang {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            font-size: 1rem;
+            padding: 10px;
+        }
+        .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
+        .active { display: flex; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- ÉCRAN ACCUEIL -->
+    <div id="menu-main" class="screen active">
+        <h1 id="app-title">KIDS LEARNING ARCADE</h1>
+        <button class="btn" onclick="showScreen('menu-math')">🔢 <span id="txt-math">MATHÉMATIQUES</span></button>
+        <button class="btn" onclick="showScreen('menu-story')">📖 <span id="txt-story">HISTOIRES</span></button>
+        <button class="btn" onclick="showScreen('menu-theme')">☁️ <span id="txt-theme">THÈMES DU DÉCOR</span></button>
+    </div>
+
+    <!-- ÉCRAN SÉLECTION ÂGE MATHS -->
+    <div id="menu-math" class="screen">
+        <h1 id="txt-choose-age">CHOISIS TON ÂGE</h1>
+        <button class="btn" onclick="startMath('6-8')">🔢 6 - 8 ans</button>
+        <button class="btn" onclick="startMath('8-10')">🔢 8 - 10 ans</button>
+        <button class="btn" onclick="startMath('10-12')">🔢 10 - 12 ans</button>
+        <button class="btn" style="width: 200px; margin-top:20px;" onclick="showScreen('menu-main')">‹ RETOUR</button>
+    </div>
+
+    <!-- ÉCRAN CHOIX THÈME -->
+    <div id="menu-theme" class="screen">
+        <h1 id="txt-choose-theme">CHOISIS UN THÈME</h1>
+        <button class="btn" onclick="setTheme('CIEL', '#87CEEB')">☁️ CIEL</button>
+        <button class="btn" onclick="setTheme('MER', '#AFEEEE')">🌊 MER</button>
+        <button class="btn" onclick="setTheme('FORET', '#98FB98')">🌲 FORÊT</button>
+        <button class="btn" onclick="setTheme('ESPACE', '#0F0F23')">🚀 NUIT</button>
+        <button class="btn" style="width: 200px; margin-top:20px;" onclick="showScreen('menu-main')">‹ RETOUR</button>
+    </div>
+
+    <!-- BOUTON DU GLOBE DE LANGUE -->
+    <button class="btn btn-lang" onclick="toggleLanguage()">🌐 <span id="lang-code">FR</span></button>
+</div>
+
+<script>
+    const translations = {
+        fr: { title: "KIDS LEARNING ARCADE", math: "MATHÉMATIQUES", story: "HISTOIRES", theme: "THÈMES DU DÉCOR", age: "CHOISIS TON ÂGE", chooseTheme: "CHOISIS UN THÈME" },
+        en: { title: "KIDS LEARNING ARCADE", math: "MATHEMATICS", story: "STORIES", theme: "THEMES", age: "CHOOSE YOUR AGE", chooseTheme: "CHOOSE A THEME" },
+        ar: { title: "مغامرة التعلم للأطفال", math: "الرياضيات", story: "القصص", theme: "المظاهر", age: "اختر عمرك", chooseTheme: "اختر مظهراً" }
+    };
+
+    let currentLang = 'fr';
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function setTheme(name, color) {
+        document.getElementById('game-container').style.backgroundColor = color;
+        if(name === 'ESPACE') {
+            document.querySelectorAll('h1').forEach(h => h.style.color = '#FFD700');
+        } else {
+            document.querySelectorAll('h1').forEach(h => h.style.color = '#FF5722');
+        }
+        showScreen('menu-main');
+    }
+
+    function toggleLanguage() {
+        if(currentLang === 'fr') currentLang = 'en';
+        else if(currentLang === 'en') currentLang = 'ar';
+        else currentLang = 'fr';
+
+        document.getElementById('lang-code').innerText = currentLang.toUpperCase();
+        document.getElementById('app-title').innerText = translations[currentLang].title;
+        document.getElementById('txt-math').innerText = translations[currentLang].math;
+        document.getElementById('txt-story').innerText = translations[currentLang].story;
+        document.getElementById('txt-theme').innerText = translations[currentLang].theme;
+        document.getElementById('txt-choose-age').innerText = translations[currentLang].age;
+        document.getElementById('txt-choose-theme').innerText = translations[currentLang].chooseTheme;
+        
+        document.body.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+    }
+
+    function startMath(age) {
+        alert("Lancement du jeu Arcade pour la tranche : " + age);
+    }
+</script>
+
+</body>
+</html>
